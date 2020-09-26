@@ -1,3 +1,3 @@
-# mincecraft-mod-packager
+# minecraft-mod-packager
 
 A minecraft mod package manager
