@@ -9,14 +9,22 @@ switch(process.argv.length) {
 	default:
 		throw "unexpected argument";
 }
-const modLockPath = "mods-lock.json";
 let save_mods_lock = {};
-let modsLock = JSON.parse(fs.readFileSync(modLockPath, "utf-8"));
-const numberCallback = 2;
+const modLockPath = "mods-lock.json";
+let modsLock;
+try {
+	modsLock = JSON.parse(fs.readFileSync(modLockPath, "utf-8"));
+}
+catch(err) {
+	if(err.errno !== -2) throw err;
+	modsLock = {curse: new Map()};
+}
+const numberCallback = 1;
 let callbackCounter = 0;
-require("./curse.js")(save_mods_lock.curse, modsLock.curse, finnish);
+require("./curse.js")(modsLock.curse, finnish);
 
-function finnish() {
+function finnish(curse) {
+	save_mods_lock.curse = curse;
 	if(++callbackCounter == numberCallback) {
 		fs.writeFile(modLockPath, JSON.stringify(save_mods_lock), (err) => {
 			if(err) throw err;
