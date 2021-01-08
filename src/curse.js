@@ -6,7 +6,7 @@ function main() {
 	let dep = new Map();
 	mods_lock = new Map(Object.entries(mods_lock));
 	global.config.mods.curse.forEach(mod => {
-		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(global.config.gameVersion)}&index=0&pageSize=1&searchFilter=${encodeURI(mod)}&sectionId=6&sort=2`, (result) => { // resolve projectID
+		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(global.config.gameVersion)}&index=0&pageSize=1&searchFilter=${encodeURI(mod)}&sectionId=6&sort=0`, (result) => { // resolve projectID
 			resolveDep(result[0].id, downloadMods);
 		});
 	});
@@ -21,10 +21,11 @@ function main() {
 				let versionArray = files[i].gameVersion;
 				if(versionMatch(versionArray, global.config.gameVersion) && (versionMatch(versionArray, global.config.modloader) || modloaderMatch(versionArray, global.config.modloader))) {
 					rightVersion = files[i];
-					dep.set(modId, {fileId: rightVersion.id, url: rightVersion.downloadUrl});
 				}
 			}
+			dep.set(String(modId), {fileId: rightVersion.id, url: rightVersion.downloadUrl, filename: rightVersion.fileName});
 			rightVersion.dependencies.forEach(mod => {
+				if(mod.type !== 3) return
 				resolveDep(mod.addonId, callback, index);
 			});
 			--resolveDepRecursionCount[index];
@@ -64,21 +65,25 @@ function main() {
 			downloadStarted = true;
 			globCallback(Object.fromEntries(dep));
 			dep.forEach((mod, modId) => {
-				getData(modId, (data) => {
-					let path = `mods/${data.name}.jar`
-					if(mods_lock.has(String(modId))) {
-						if(mods_lock.get(String(modId)).fileId === mod.fileId) return;
-						fs.unlink(path);
+					let path = getPath(mod)
+					if(mods_lock.has(modId)) {
+						if(mods_lock.get(modId).fileId === mod.fileId) return;
+						fs.unlink(path, () => {});
 					}
 					downloadFile(mod.url, path);
-				});
+			});
+			mods_lock.forEach((mod, modId) => {
+				if(!dep.has(modId)) fs.unlink(getPath(mod), () => {})
 			});
 		}
+	}
+	function getPath(mod) {
+		return `mods/${mod.filename}`
 	}
 
 	function downloadFile(url, dest) {
 		let file = fs.createWriteStream(dest);
-		console.log(`downloading... ${url}`);
+		console.log(`downloading ${url}`);
 		let request = https.get(url, (response) => {
 			// check if response is success
 			if (response.statusCode !== 200) {
@@ -93,7 +98,7 @@ function main() {
 
 		// check for request error too
 		request.on('error', (err) => {
-			fs.unlink(dest);
+			fs.unlink(dest, () => {});
 			throw err;
 		});
 
@@ -105,7 +110,6 @@ function main() {
 }
 module.exports = function(mods_lock_p, callback) {
 	mods_lock = mods_lock_p;
-	console.log(mods_lock);
 	globCallback = callback;
 	main();
 };
