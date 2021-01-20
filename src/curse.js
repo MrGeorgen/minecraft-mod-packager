@@ -5,6 +5,7 @@ function main() {
 	let downloadStarted = false;
 	let dep = new Map();
 	mods_lock = new Map(Object.entries(mods_lock));
+	if(global.config.mods.curse.length === 0) globCallback("curse", {});
 	global.config.mods.curse.forEach(mod => {
 		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(global.config.gameVersion)}&index=0&pageSize=1&searchFilter=${encodeURI(mod)}&sectionId=6&sort=0`, (result) => { // resolve projectID
 			resolveDep(result[0].id, downloadMods);
@@ -63,7 +64,7 @@ function main() {
 	function downloadMods() {
 		if(!downloadStarted) {
 			downloadStarted = true;
-			globCallback(Object.fromEntries(dep));
+			globCallback("curse", Object.fromEntries(dep));
 			dep.forEach((mod, modId) => {
 					let path = getPath(mod)
 					if(mods_lock.has(modId)) {
