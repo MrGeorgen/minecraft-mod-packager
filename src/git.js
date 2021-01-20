@@ -7,11 +7,13 @@ let globCallback;
 let loopCounter = 0;
 function main () {
 	modsLock = new Map(Object.entries(modsLock));
+	let deleteMods = new Map(modsLock);
 	let cacheDir = process.env.XDG_CACHE_HOME;
 	if(cacheDir == null) cacheDir = `${process.env.HOME}/.cache`;
 	let repoPathRoot = `${cacheDir}/minecraft-mod-packager`;
 	global.config.mods.git.forEach((gitRepo) => {
 		++loopCounter;
+		deleteMods.delete(gitRepo.url);
 		let repoPath = `${repoPathRoot}/${gitRepo.url.replace("://", "+")}/${gitRepo.branch}`;
 		fs.access(repoPath, (err) => {
 			if(err) {
@@ -28,6 +30,11 @@ function main () {
 					build(repo, repoPath, gitRepo);
 				});
 			}
+		});
+	});
+	deleteMods.forEach((mod) => {
+		fs.unlink(mod.filename, (err) => {
+			if(err) throw err;
 		});
 	});
 }
