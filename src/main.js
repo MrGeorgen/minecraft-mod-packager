@@ -17,14 +17,15 @@ try {
 }
 catch(err) {
 	if(err.errno !== -2) throw err;
-	modsLock = {curse: new Map()};
+	modsLock = {curse: {}, git: {}};
 }
-const numberCallback = 1;
+const numberCallback = 2;
 let callbackCounter = 0;
 require("./curse.js")(modsLock.curse, finnish);
+require("./git.js")(modsLock.git, finnish);
 
-function finnish(curse) {
-	save_mods_lock.curse = curse;
+function finnish(name, data) {
+	save_mods_lock[name] = data;
 	if(++callbackCounter == numberCallback) {
 		fs.writeFile(modLockPath, JSON.stringify(save_mods_lock), (err) => {
 			if(err) throw err;
