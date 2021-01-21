@@ -1,5 +1,4 @@
 const git = require("gift");
-const glob = require("glob");
 const childProcess = require("child_process");
 const fs = require("fs");
 const g2js = require('gradle-to-js/lib/parser');
