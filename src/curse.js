@@ -12,10 +12,9 @@ function main() {
 		});
 	});
 
-	var resolveDepRecursionCount = [];
-	function resolveDep(modId, callback, index) {
-		if(index === undefined) index = resolveDepRecursionCount.push(0) - 1;
-		++resolveDepRecursionCount[index];
+	var resolveDepRecursionCount = 0;
+	function resolveDep(modId, callback) {
+		++resolveDepRecursionCount;
 		getData(`${modId}/files`, (files) => {
 			let rightVersion;
 			for(let i = files.length - 1; i >= 0; --i) {
@@ -27,10 +26,10 @@ function main() {
 			dep.set(String(modId), {fileId: rightVersion.id, url: rightVersion.downloadUrl, filename: rightVersion.fileName});
 			rightVersion.dependencies.forEach(mod => {
 				if(mod.type !== 3) return
-				resolveDep(mod.addonId, callback, index);
+				resolveDep(mod.addonId, callback);
 			});
-			--resolveDepRecursionCount[index];
-			if(resolveDepRecursionCount[index] == 0) callback();
+			--resolveDepRecursionCount;
+			if(resolveDepRecursionCount == 0) callback();
 		});
 	}
 
@@ -66,12 +65,12 @@ function main() {
 			downloadStarted = true;
 			globCallback("curse", Object.fromEntries(dep));
 			dep.forEach((mod, modId) => {
-					let path = getPath(mod)
-					if(mods_lock.has(modId)) {
-						if(mods_lock.get(modId).fileId === mod.fileId) return;
-						fs.unlink(path, () => {});
-					}
-					downloadFile(mod.url, path);
+				let path = getPath(mod)
+				if(mods_lock.has(modId)) {
+					if(mods_lock.get(modId).fileId === mod.fileId) return;
+					fs.unlink(path, () => {});
+				}
+				downloadFile(mod.url, path);
 			});
 			mods_lock.forEach((mod, modId) => {
 				if(!dep.has(modId)) fs.unlink(getPath(mod), () => {})
