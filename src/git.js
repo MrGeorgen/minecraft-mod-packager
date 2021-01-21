@@ -2,6 +2,7 @@ const git = require("gift");
 const glob = require("glob");
 const childProcess = require("child_process");
 const fs = require("fs");
+const g2js = require('gradle-to-js/lib/parser');
 let modsLock;
 let globCallback;
 let loopCounter = 0;
@@ -32,11 +33,13 @@ function main () {
 			}
 		});
 	});
-	deleteMods.forEach((mod) => {
-		fs.unlink(mod.filename, (err) => {
+	deleteMods.forEach((mod, url) => {
+		modsLock.delete(url);
+		fs.unlink(modPath(mod.filename), (err) => {
 			if(err) throw err;
 		});
 	});
+	mayCb();
 }
 
 function build(repo, repoPath, gitRepo) {
@@ -47,32 +50,42 @@ function build(repo, repoPath, gitRepo) {
 	}
 	repo.current_commit((err, commit) => {
 		if(err) throw err;
-		if(commit.id === newLock.commitId) mayCb();
+		if(commit.id === newLock.commitId) cbDecrease();
 		else {
 			newLock.commitId = commit.id;
 			childProcess.execFile("gradle", ["build"], {cwd: repoPath}, (err) => {
 				if(err) throw err;
 				let buildPath = `${repoPath}/build/libs`;
-				glob(gitRepo.fileMatch, {cwd: buildPath}, (err, files) => {
+				fs.readFile(`${repoPath}/gradle.properties`, "utf-8", (err, data) => {
 					if(err) throw err;
-					if(files.length !== 1) throw `mod glob matched multiple or no files. mod:\n${JSON.stringify(gitRepo)}`;
-					modFile = files[0];
-					if(newLock.filename != null) fs.unlink(`mods/${newLock.filename}`, (err) => {
-						if(err) throw err;
+					g2js.parseText(data).then((gradleProp) => {
+						let modFile = `${gradleProp.archives_base_name}-${gradleProp.mod_version}.jar`;
+						if(newLock.filename != null) fs.unlink(`mods/${newLock.filename}`, (err) => {
+							if(err) throw err;
+						});
+						fs.copyFile(`${buildPath}/${modFile}`, `mods/${modFile}`, (err) => {
+							if(err) throw err;
+						});
+						newLock.filename = modFile;
+						cbDecrease();
 					});
-					mayCb();
-					fs.copyFile(`${buildPath}/${modFile}`, `mods/${modFile}`, (err) => {
-						if(err) throw err;
-					});
-					newLock.filename = modFile;
 				});
 			});
 		}
 	});
 }
 
+function cbDecrease() {
+	--loopCounter;
+	mayCb();
+}
+
 function mayCb() {
-	if(--loopCounter === 0) globCallback("git", Object.fromEntries(modsLock));
+	if(loopCounter <= 0) globCallback("git", Object.fromEntries(modsLock));
+}
+
+function modPath(filename) {
+	return `mods/${filename}`;
 }
 
 module.exports = (mods_lock_p, cb) => {

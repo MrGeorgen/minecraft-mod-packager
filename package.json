@@ -15,7 +15,7 @@
   "dependencies": {
     "follow-redirects": "^1.13.0",
     "gift": "^0.10.2",
-    "glob": "^7.1.6",
+    "gradle-to-js": "^2.0.0",
     "node-json-minify": "^1.0.0"
   }
 }
