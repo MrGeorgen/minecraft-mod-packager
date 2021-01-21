@@ -1,6 +1,7 @@
-let mods_lock;
 const { http, https } = require('follow-redirects');
 const fs = require("fs");
+const util = require("./util.js");
+let mods_lock;
 let downloadStarted = false;
 let dep = new Map();
 function main() {
@@ -104,7 +105,7 @@ function downloadFile(url, dest) {
 	});
 
 	file.on('error', (err) => { // Handle errors
-		fs.unlink(dest);
+		fs.unlink(dest, () => {});
 		throw err;
 	});
 }

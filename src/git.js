@@ -2,6 +2,7 @@ const git = require("gift");
 const childProcess = require("child_process");
 const fs = require("fs");
 const g2js = require('gradle-to-js/lib/parser');
+const util = require("./util.js");
 let modsLock;
 let globCallback;
 let loopCounter = 0;
@@ -34,7 +35,7 @@ function main () {
 	});
 	deleteMods.forEach((mod, url) => {
 		modsLock.delete(url);
-		fs.unlink(modPath(mod.filename), (err) => {
+		fs.unlink(util.modPath(mod), (err) => {
 			if(err) throw err;
 		});
 	});
@@ -58,14 +59,13 @@ function build(repo, repoPath, gitRepo) {
 				fs.readFile(`${repoPath}/gradle.properties`, "utf-8", (err, data) => {
 					if(err) throw err;
 					g2js.parseText(data).then((gradleProp) => {
-						let modFile = `${gradleProp.archives_base_name}-${gradleProp.mod_version}.jar`;
-						if(newLock.filename != null) fs.unlink(`mods/${newLock.filename}`, (err) => {
+						if(newLock.filename != null) fs.unlink(util.modPath(newLock) (err) => {
 							if(err) throw err;
 						});
-						fs.copyFile(`${buildPath}/${modFile}`, `mods/${modFile}`, (err) => {
+						newLock.filename = `${gradleProp.archives_base_name}-${gradleProp.mod_version}.jar`;
+						fs.copyFile(`${buildPath}/${newLock.filename}`, util.modPath(newLock) (err) => {
 							if(err) throw err;
 						});
-						newLock.filename = modFile;
 						cbDecrease();
 					});
 				});
@@ -81,10 +81,6 @@ function cbDecrease() {
 
 function mayCb() {
 	if(loopCounter <= 0) globCallback("git", Object.fromEntries(modsLock));
-}
-
-function modPath(filename) {
-	return `mods/${filename}`;
 }
 
 module.exports = (mods_lock_p, cb) => {
