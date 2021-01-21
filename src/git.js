@@ -59,11 +59,11 @@ function build(repo, repoPath, gitRepo) {
 				fs.readFile(`${repoPath}/gradle.properties`, "utf-8", (err, data) => {
 					if(err) throw err;
 					g2js.parseText(data).then((gradleProp) => {
-						if(newLock.filename != null) fs.unlink(util.modPath(newLock) (err) => {
+						if(newLock.filename != null) fs.unlink(util.modPath(newLock), (err) => {
 							if(err) throw err;
 						});
 						newLock.filename = `${gradleProp.archives_base_name}-${gradleProp.mod_version}.jar`;
-						fs.copyFile(`${buildPath}/${newLock.filename}`, util.modPath(newLock) (err) => {
+						fs.copyFile(`${buildPath}/${newLock.filename}`, util.modPath(newLock), (err) => {
 							if(err) throw err;
 						});
 						cbDecrease();

@@ -9,7 +9,15 @@ function main() {
 	if(global.config.mods.curse.length === 0) globCallback("curse", {});
 	global.config.mods.curse.forEach(mod => {
 		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(global.config.gameVersion)}&index=0&pageSize=15&searchFilter=${encodeURI(mod)}&sectionId=6&sort=0`, (result) => { // resolve projectID
-			resolveDep(result[0].id, downloadMods);
+			let i = 0;
+			while(result[i].name !== mod) {
+				++i;
+				if(i === result.length) {
+					console.log(`cursemod ${mod} not found`);
+					return;
+				}
+			}
+			resolveDep(result[i].id, downloadMods);
 		});
 	});
 }
