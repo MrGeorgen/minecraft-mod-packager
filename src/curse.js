@@ -38,6 +38,7 @@ function resolveDep(modId, callback) {
 				console.log(`cursemod ${mod.name}: no version for the correct minecraft version and modloader found`);
 			});
 			return;
+		}
 		dep.set(String(modId), {fileId: rightVersion.id, url: rightVersion.downloadUrl, filename: rightVersion.fileName});
 		rightVersion.dependencies.forEach(mod => {
 			if(mod.type !== 3) return;
