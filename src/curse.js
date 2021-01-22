@@ -33,6 +33,11 @@ function resolveDep(modId, callback) {
 				rightVersion = files[i];
 			}
 		}
+		if(rightVersion === undefined) {
+			getData(modId, (mod) => {
+				console.log(`cursemod ${mod.name}: no version for the correct minecraft version and modloader found`);
+			});
+			return;
 		dep.set(String(modId), {fileId: rightVersion.id, url: rightVersion.downloadUrl, filename: rightVersion.fileName});
 		rightVersion.dependencies.forEach(mod => {
 			if(mod.type !== 3) return;
