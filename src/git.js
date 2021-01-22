@@ -19,6 +19,7 @@ function main () {
 		fs.access(repoPath, (err) => {
 			if(err) {
 				if(err.code !== "ENOENT") throw err;
+				console.log(`cloning git repo ${gitRepo.url}`);
 				git.clone(gitRepo.url, repoPath, undefined, gitRepo.branch, (err, repo) => {
 					if(err) throw err;
 					build(repo, repoPath, gitRepo);
@@ -26,6 +27,7 @@ function main () {
 			}
 			else {
 				let repo = git(repoPath);
+				console.log(`pulling git repo ${gitRepo.url}`);
 				repo.pull(["origin"], gitRepo.branch, (err) => {
 					if(err) throw err;
 					build(repo, repoPath, gitRepo);
@@ -53,6 +55,7 @@ function build(repo, repoPath, gitRepo) {
 		if(commit.id === newLock.commitId) cbDecrease();
 		else {
 			newLock.commitId = commit.id;
+			console.log(`buidling ${gitRepo.url}`);
 			childProcess.execFile("gradle", ["build"], {cwd: repoPath}, (err) => {
 				if(err) throw err;
 				let buildPath = `${repoPath}/build/libs`;
