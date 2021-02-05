@@ -1,5 +1,5 @@
 function modPath(mod) {
-	return `mods${mod.filename}`;
+	return `mods/${mod.filename}`;
 }
 
 module.exports = {
