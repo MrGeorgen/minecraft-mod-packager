@@ -1,18 +1,27 @@
-const git = require("gift");
-const childProcess = require("child_process");
-const fs = require("fs");
-const g2js = require('gradle-to-js/lib/parser');
-const util = require("./util.js");
-let modsLock;
-let globCallback;
-let loopCounter = 0;
+import git from "gift";
+import childProcess from "child_process";
+import fs from "fs";
+import g2js from "gradle-to-js/lib/parser";
+interface modLockElement {
+	commitId: string;
+	url: string;
+	filename: string;
+}
+type modLockMap = Map<string, modLockElement>;
+interface commit {
+	id: string;
+}
+let modsLock: modLockMap;
+let globCallback: Function;
+let loopCounter: number = 0;
+let config;
 function main () {
 	modsLock = new Map(Object.entries(modsLock));
-	let deleteMods = new Map(modsLock);
+	let deleteMods: modLockMap = new Map(modsLock);
 	let cacheDir = process.env.XDG_CACHE_HOME;
 	if(cacheDir == null) cacheDir = `${process.env.HOME}/.cache`;
 	let repoPathRoot = `${cacheDir}/minecraft-mod-packager`;
-	global.config.mods.git.forEach((gitRepo) => {
+	config.mods.git.forEach((gitRepo) => {
 		++loopCounter;
 		deleteMods.delete(gitRepo.url);
 		let repoPath = `${repoPathRoot}/${gitRepo.url.replace("://", "+")}/${gitRepo.branch}`;
@@ -20,7 +29,7 @@ function main () {
 			if(err) {
 				if(err.code !== "ENOENT") throw err;
 				console.log(`cloning git repo ${gitRepo.url}`);
-				git.clone(gitRepo.url, repoPath, undefined, gitRepo.branch, (err, repo) => {
+				git.clone(gitRepo.url, repoPath, undefined, gitRepo.branch, (err: Error, repo) => {
 					if(err) throw err;
 					build(repo, repoPath, gitRepo);
 				});
@@ -28,7 +37,7 @@ function main () {
 			else {
 				let repo = git(repoPath);
 				console.log(`pulling git repo ${gitRepo.url}`);
-				repo.pull(["origin"], gitRepo.branch, (err) => {
+				repo.pull(["origin"], gitRepo.branch, (err: Error) => {
 					if(err) throw err;
 					build(repo, repoPath, gitRepo);
 				});
@@ -37,20 +46,18 @@ function main () {
 	});
 	deleteMods.forEach((mod, url) => {
 		modsLock.delete(url);
-		fs.unlink(util.modPath(mod), (err) => {
+		fs.unlink(modPath(mod), (err) => {
 			if(err) throw err;
 		});
 	});
 	mayCb();
 }
 
-function build(repo, repoPath, gitRepo) {
-	if(modsLock.has(gitRepo.url)) newLock = modsLock.get(gitRepo.url);
-	else {
-		newLock = {};
-		modsLock.set(gitRepo.url, newLock);
-	}
-	repo.current_commit((err, commit) => {
+function build(repo, repoPath, gitRepo):void {
+	let newLock: modLockElement;
+	newLock = modsLock.get(gitRepo.url) ?? {} as modLockElement;
+	modsLock.set(gitRepo.url, newLock);
+	repo.current_commit((err: Error, commit: commit) => {
 		if(err) throw err;
 		if(commit.id === newLock.commitId) cbDecrease();
 		else {
@@ -62,11 +69,11 @@ function build(repo, repoPath, gitRepo) {
 				fs.readFile(`${repoPath}/gradle.properties`, "utf-8", (err, data) => {
 					if(err) throw err;
 					g2js.parseText(data).then((gradleProp) => {
-						if(newLock.filename != null) fs.unlink(util.modPath(newLock), (err) => {
+						if(newLock.filename != null) fs.unlink(modPath(newLock), (err) => {
 							if(err) throw err;
 						});
 						newLock.filename = `${gradleProp.archives_base_name}-${gradleProp.mod_version}.jar`;
-						fs.copyFile(`${buildPath}/${newLock.filename}`, util.modPath(newLock), (err) => {
+						fs.copyFile(`${buildPath}/${newLock.filename}`, modPath(newLock), (err) => {
 							if(err) throw err;
 						});
 						cbDecrease();
@@ -77,17 +84,18 @@ function build(repo, repoPath, gitRepo) {
 	});
 }
 
-function cbDecrease() {
+function cbDecrease():void {
 	--loopCounter;
 	mayCb();
 }
 
-function mayCb() {
+function mayCb():void {
 	if(loopCounter <= 0) globCallback("git", Object.fromEntries(modsLock));
 }
 
-module.exports = (mods_lock_p, cb) => {
+module.exports = (mods_lock_p, _config, cb) => {
 	globCallback = cb;
 	modsLock = mods_lock_p;
+	config = _config;
 	main()
 }

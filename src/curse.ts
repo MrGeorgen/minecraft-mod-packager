@@ -1,14 +1,25 @@
-const { http, https } = require('follow-redirects');
-const fs = require("fs");
-const util = require("./util.js");
-let mods_lock;
-let downloadStarted = false;
-let dep = new Map();
+import { https } from "follow-redirects";
+import fs from "fs";
+interface modLockElement {
+	fileId: number;
+	url: string;
+	filename: string;
+}
+type modLockMap = Map<string, modLockElement>;
+interface Dependency {
+	readonly addonId: number;
+	readonly type: number;
+}
+let mods_lock: modLockMap;
+let downloadStarted: boolean = false;
+let globCallback;
+let config;
+let dep: modLockMap = new Map();
 function main() {
 	mods_lock = new Map(Object.entries(mods_lock));
-	if(global.config.mods.curse.length === 0) globCallback("curse", {});
-	global.config.mods.curse.forEach(mod => {
-		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(global.config.gameVersion)}&index=0&pageSize=15&searchFilter=${encodeURI(mod)}&sectionId=6&sort=0`, (result) => { // resolve projectID
+	if(config.mods.curse.length === 0) globCallback("curse", {});
+	config.mods.curse.forEach((mod: string) => {
+		getData(`search?categoryId=0&gameId=432&gameVersion=${encodeURI(config.gameVersion)}&index=0&pageSize=15&searchFilter=${encodeURI(mod)}&sectionId=6&sort=0`, (result: Array<any>) => { // resolve projectID
 			let i = 0;
 			while(result[i].name !== mod) {
 				++i;
@@ -23,24 +34,24 @@ function main() {
 }
 
 var resolveDepRecursionCount = 0;
-function resolveDep(modId, callback) {
+function resolveDep(modId: number, callback: Function) {
 	++resolveDepRecursionCount;
-	getData(`${modId}/files`, (files) => {
-		let rightVersion;
+	getData(`${modId}/files`, (files: Array<any>) => {
+		let rightVersion: any;
 		for(let i = files.length - 1; i >= 0; --i) {
 			let versionArray = files[i].gameVersion;
-			if(versionMatch(versionArray, global.config.gameVersion) && (versionMatch(versionArray, global.config.modloader) || modloaderMatch(versionArray, global.config.modloader))) {
+			if(versionMatch(versionArray, config.gameVersion) && (versionMatch(versionArray, config.modloader) || modloaderMatch(versionArray, config.modloader))) {
 				rightVersion = files[i];
 			}
 		}
 		if(rightVersion === undefined) {
-			getData(modId, (mod) => {
+			getData(String(modId), (mod: any) => {
 				console.log(`cursemod ${mod.name}: no version for the correct minecraft version and modloader found`);
 			});
 			return;
 		}
 		dep.set(String(modId), {fileId: rightVersion.id, url: rightVersion.downloadUrl, filename: rightVersion.fileName});
-		rightVersion.dependencies.forEach(mod => {
+		rightVersion.dependencies.forEach((mod: Dependency) => {
 			if(mod.type !== 3) return;
 			resolveDep(mod.addonId, callback);
 		});
@@ -49,9 +60,9 @@ function resolveDep(modId, callback) {
 	});
 }
 
-function getData(url, callback) {
+function getData(url: string, callback: Function) {
 	https.get(`https://addons-ecs.forgesvc.net/api/v2/addon/${url}`, (resp) => {
-		let data = '';
+		let data: string = '';
 		resp.on('data', (chunk) => {
 			data += chunk;
 		});
@@ -80,24 +91,21 @@ function downloadMods() {
 	if(!downloadStarted) {
 		downloadStarted = true;
 		globCallback("curse", Object.fromEntries(dep));
-		dep.forEach((mod, modId) => {
-			let path = getPath(mod)
+		dep.forEach((mod: modLockElement, modId: string) => {
+			let path = modPath(mod)
 			if(mods_lock.has(modId)) {
-				if(mods_lock.get(modId).fileId === mod.fileId) return;
+				if(mods_lock.get(modId)!.fileId === mod.fileId) return;
 				fs.unlink(path, () => {});
 			}
 			downloadFile(mod.url, path);
 		});
-		mods_lock.forEach((mod, modId) => {
-			if(!dep.has(modId)) fs.unlink(getPath(mod), () => {})
+		mods_lock.forEach((mod: modLockElement, modId: string) => {
+			if(!dep.has(modId)) fs.unlink(modPath(mod), () => {})
 		});
 	}
 }
-function getPath(mod) {
-	return `mods/${mod.filename}`
-}
 
-function downloadFile(url, dest) {
+function downloadFile(url: string, dest: string) {
 	let file = fs.createWriteStream(dest);
 	console.log(`downloading ${url}`);
 	let request = https.get(url, (response) => {
@@ -113,19 +121,20 @@ function downloadFile(url, dest) {
 	file.on('finish', () => file.close());
 
 	// check for request error too
-	request.on('error', (err) => {
+	request.on('error', (err: Error) => {
 		fs.unlink(dest, () => {});
 		throw err;
 	});
 
-	file.on('error', (err) => { // Handle errors
+	file.on('error', (err: Error) => { // Handle errors
 		fs.unlink(dest, () => {});
 		throw err;
 	});
 }
 
-module.exports = function(mods_lock_p, callback) {
+module.exports = function(mods_lock_p, _config, callback) {
 	mods_lock = mods_lock_p;
 	globCallback = callback;
+	config = _config;
 	main();
 };

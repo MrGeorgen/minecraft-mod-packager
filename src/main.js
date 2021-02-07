@@ -1,10 +1,11 @@
 const jsonMinify = require("node-json-minify");
 const fs = require("fs");
+let config;
 switch(process.argv.length) {
 	case 3:
 		process.chdir(process.argv[2]);
 	case 2:
-		global.config = JSON.parse(jsonMinify(fs.readFileSync("mods.json", "utf-8")));
+		config = JSON.parse(jsonMinify(fs.readFileSync("mods.json", "utf-8")));
 		break;
 	default:
 		throw "unexpected argument";
@@ -21,8 +22,8 @@ catch(err) {
 }
 const numberCallback = 2;
 let callbackCounter = 0;
-require("./curse.js")(modsLock.curse, finnish);
-require("./git.js")(modsLock.git, finnish);
+require("./curse")(modsLock.curse, config, finnish);
+require("./git.js")(modsLock.git, config, finnish);
 
 function finnish(name, data) {
 	save_mods_lock[name] = data;
