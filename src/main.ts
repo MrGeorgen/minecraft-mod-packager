@@ -1,6 +1,10 @@
-const jsonMinify = require("node-json-minify");
-const fs = require("fs");
-let config;
+import jsonMinify from "node-json-minify";
+import fs from "fs";
+import {config} from "./modBase";
+import curse from "./curse";
+import git from "./git";
+let config: config;
+let modules = ["curse", "git"];
 switch(process.argv.length) {
 	case 3:
 		process.chdir(process.argv[2]);
@@ -18,14 +22,14 @@ try {
 }
 catch(err) {
 	if(err.errno !== -2) throw err;
-	modsLock = {curse: {}, git: {}};
+	modsLock = {};
 }
-const numberCallback = 2;
+const numberCallback = modules.length;
 let callbackCounter = 0;
-require("./curse")(modsLock.curse, config, finnish);
-require("./git.js")(modsLock.git, config, finnish);
+new git(new Map(Object.entries(modsLock.git ?? {})), config, finnish);
+new curse(new Map(Object.entries(modsLock.curse ?? {})), config, finnish);
 
-function finnish(name, data) {
+function finnish(name: string, data) {
 	save_mods_lock[name] = data;
 	if(++callbackCounter == numberCallback) {
 		fs.writeFile(modLockPath, JSON.stringify(save_mods_lock), (err) => {
